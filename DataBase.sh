@@ -94,9 +94,12 @@ function create_table
 	elif [[ $table_name =~ ^[a-z] || $table_name =~ ^[A-Z] ]]
         then	
 	        extintion=.csv
-	        tab_name=$table_name$extintion
-	        #cd DataBase/$path	
+		meta_table=meta
+                tab_name=$table_name$extintion
+	        meta_name=$table_name$meta_table$extintion
+		cd $path	
                 touch $tab_name
+		touch $meta_name
                 echo Please enter number of column
 		read num_col
 		typeset -i counter
@@ -108,19 +111,19 @@ function create_table
 		read PK 
 		if [[ $PK = "" ]]
 		then
-	             echo You must enter the PK 
+	             echo -e "You must enter the PK\n" 
 	             echo Please enter the name of column you want to be PK
                      read PK
 		elif [[ $PK =~ [/.:\|\-] ]]
 	        then
-	             echo "You can't use . \ : - |"
+	             echo -e "You can't use . \ : - |\n"
 		     echo Please enter the name of column you want to be PK
                      read PK
                 elif [[ $PK =~ ^[a-z] || $PK =~ ^[A-Z] ]]
 		then
 	             meta=$PK$seperator
 	        else
-	             echo "You can't use number or special character"
+	             echo -e "You can't use number or special character\n"
 		     echo Please enter the name of column you want to be PK
                      read PK
                 fi
@@ -130,17 +133,17 @@ function create_table
 		     read name_col
 		     if [[ $name_col = "" ]]
                      then
-                          echo invalid entry 
+                          echo -e "invalid entry\n" 
                           echo Please enter the name of column 
                           read name_col
                      elif [[ $name_col =~ [/.:\|\-] ]]
                      then
-                          echo "You can't use . \ : - |"
+                          echo -e "You can't use . \ : - |\n"
                           echo Please enter the name of column 
                           read name_col
 		      elif [[ $name_col =~ ^[0-9] ]]
 		      then
-                          echo "You can't use number or special character"
+                          echo -e "You can't use number or special character\n"
                           echo Please enter the name of column
                           read name_col
                       elif [[ $name_col =~ ^[a-z] || $name_col =~ ^[A-Z] ]]
@@ -155,9 +158,9 @@ function create_table
                              fi
 		       fi
 		        done
-			echo $meta>>$tab_name
-			echo $tab_name>>$tab_name
-			echo $num_col>>$tab_name
+			echo $meta>>$meta_name
+			echo $table_name>>$meta_name
+			echo $num_col>>$meta_name
 		        echo Table created successfully
 			sleep 1
 			table_menu
@@ -165,6 +168,105 @@ function create_table
         else
 	    echo "You can't use number or special character"
 	fi
+}
+function drop_table
+{ 
+	echo please enter table name 
+	read Table_name
+	ext=.csv
+        Meta=meta
+	meta_table_name=$Table_name$Meta$ext
+	table_Name=$Table_name$ext
+	cd DataBase 2>>/dev/null
+	if [[ -f $meta_table_name ]]
+	then
+	     rm $meta_table_name
+	     rm $table_Name
+	     if [[ -f $meta_table_name && -f $table_Name ]]
+             then
+		     echo Table not droped 
+		     sleep 1 
+		     drop_table
+	     else
+		     echo Table droped successfully
+		     sleep 1
+		     table_menu
+	     fi
+        else
+		echo Table not exist already!
+		sleep 1 
+		table_menu
+	fi
+}
+function insert_to_table
+{
+	echo Please enter table name 
+	read Table_Name
+	ext=.csv
+	meta_name=meta
+	data_table=$Table_Name$ext
+	meta_table=$Table_Name$meta_name$ext
+	cd $path 2>/dev/null
+	if [[ -f  $data_table && -f $meta_table ]]
+	then
+		typeset -i count
+		count=0
+		number_col=`tail -n 1 $meta_table`
+		let col_end=$number_col-1
+		let PK_col=$number_col-$col_end
+        	sep=","
+		data=""
+		data=$PK_data$sep
+        	end_row="\n"
+		let counter=1
+       		while [[ $count -lt $number_col ]]
+		do
+			    echo Please enter data of Primary Key column
+                            read PK_data
+                            while [[ $PK_data == "" ]]
+                            do
+                       	      echo -e  "This column is the PK can't be null\n"
+                              echo Please enter data
+                              read PK_data
+                            done
+			    data=$PK_data$sep
+			     count=$count+1
+			    echo Please enter the data of next col
+			    read D_col
+			    if [[ $count == $col_end ]]
+			    then
+				data=$data$D_col
+			        count=$count+1
+			    else 
+				data=$data$D_col$sep
+				count=$count+1
+			    fi
+		        	    
+		done
+		echo $data>>$data_table
+		echo Data successfully inserted
+	        sleep 1	
+		echo "Do you want to insert new row (Y/N)"
+		read answer
+		if [[ $answer == 'Y' || $answer == 'y' ]]
+		then
+			insert_to_table
+		else
+			table_menu
+		fi
+	else 
+		echo Table not exist!
+		sleep 1
+		insert_to_table
+	fi   	
+}
+function list_table
+{
+        cd DataBase/$path 2>/dev/null
+        ls -p  2>/dev/null | grep -v /
+        echo -e "\n"
+        sleep 10
+        menu
 }
 function table_menu
 {
@@ -175,11 +277,11 @@ function table_menu
 	case $table_num in
 		1) create_table 
 			;;
-		2) echo list
+		2) list_table
 			;;
-		3) echo drop
+		3) drop_table
 			;;
-		4) echo insert 
+		4) insert_to_table	
 			;;
 		5) echo select
 			;;
@@ -199,7 +301,7 @@ function connect
 	if [ -d $DB ]
 	then 
 	     path=$DB
-	     cd ~/shell/Database-Management-System-using-Shell-Script/DataBase/$DB 2>/dev/null
+	     cd DataBase/$DB 2>/dev/null
 	     if [ $?==0 ]
              then 
 		table_menu
