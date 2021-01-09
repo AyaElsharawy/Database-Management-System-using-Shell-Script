@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/bash 
 clear
 DataBases=`mkdir DataBase 2>/dev/null`
 echo Welcom to DBMS
@@ -45,7 +45,7 @@ function list
         cd DataBase 2>/dev/null
        	ls -d */ 2>/dev/null | cut -f1 -d'/'
         echo -e "\n"
-	sleep 10
+	sleep 5
         menu
 }
 function remove
@@ -210,17 +210,14 @@ function insert_to_table
 	if [[ -f  $data_table && -f $meta_table ]]
 	then
 		typeset -i count
-		count=0
+		count=1
 		number_col=`tail -n 1 $meta_table`
-		let col_end=$number_col-1
-		let PK_col=$number_col-$col_end
         	sep=","
 		data=""
-		data=$PK_data$sep
-        	end_row="\n"
-		let counter=1
-       		while [[ $count -lt $number_col ]]
+       		while [[ $count -le $number_col ]]
 		do
+			if [[ $count == 1 ]]
+			then
 			    echo Please enter data of Primary Key column
                             read PK_data
                             while [[ $PK_data == "" ]]
@@ -230,28 +227,76 @@ function insert_to_table
                               read PK_data
                             done
 			    data=$PK_data$sep
-			     count=$count+1
+			    (( count++ ))
+		       else
 			    echo Please enter the data of next col
 			    read D_col
-			    if [[ $count == $col_end ]]
+			    if [[ $count == $number_col ]]
 			    then
 				data=$data$D_col
-			        count=$count+1
+				(( count++ ))
 			    else 
 				data=$data$D_col$sep
-				count=$count+1
+				(( count++ ))
 			    fi
-		        	    
+		    fi	    
 		done
 		echo $data>>$data_table
 		echo Data successfully inserted
 	        sleep 1	
-		echo "Do you want to insert new row (Y/N)"
+		echo "Do you want to insert new row (Y|N)"
 		read answer
+		sleep 1
 		if [[ $answer == 'Y' || $answer == 'y' ]]
 		then
-			insert_to_table
+			echo How many row you want to enter 
+			read row 
+			typeset -i counter_row
+			typeset -i counter_col
+                        counter_row=1
+			counter_col=1
+			while [ $counter_row -le $row ]
+			do
+			  while [ $counter_col -le $number_col ]
+			  do
+			     if [[ $counter_col == 1 ]]
+			     then 
+			        echo Please enter data of Primary Key column
+                                read pk_data
+                                while [[ $pk_data == "" ]]
+                                do
+                                echo -e  "This column is the PK can't be null\n"
+                                echo Please enter data
+                                read pk_data
+                                done
+                                Data=$pk_data$sep
+				(( counter_col++ ))
+			     else
+				 echo Please enter the next column data
+				 read data_col
+				 if [[ $counter_col == $number_col ]]
+				 then
+					 Data=$Data$data_col
+					 (( counter_col++ ))
+				 else 
+					Data=$Data$data_col$sep
+					(( counter_col++ ))
+				 fi
+			     fi
+                             done 
+			     (( counter_row++ ))
+			     echo $Data>>$data_table
+			     Data=""
+		     done
+		     echo Data inserted successfully
+		     sleep 1
+		     table_menu
+		elif [[ $answer == 'N' || $answer == 'n' ]]
+		then	
+			table_menu
 		else
+			echo Invalid entry 
+			sleep 1 
 			table_menu
 		fi
 	else 
@@ -263,10 +308,144 @@ function insert_to_table
 function list_table
 {
         cd DataBase/$path 2>/dev/null
+	cd $path 2>/dev/null 
         ls -p  2>/dev/null | grep -v /
         echo -e "\n"
-        sleep 10
-        menu
+        sleep 5
+        table_menu
+}
+function delete_from_table
+{
+	echo Enter table name
+	read TableName
+	EXT=.csv
+	Table_Name=$TableName$EXT
+	cd $path 2>>/dev/null
+	if [ -f $Table_Name ]
+	then
+	       echo please enter PK of record you want to remove 
+               read rm_record
+	      result=`awk -F, '{if($1=='$rm_record'){print NR}}' $Table_Name`
+	      if [[ $result = "" ]]
+	      then
+		      echo Record not found 
+	      else
+	              sed -i ''$result'd' $Table_Name
+		      echo Record removed successfully
+		      echo "Do you want to remove another record [Y|N]"
+		      read return_to
+		      if [[ $return_to == 'Y' || $return_to == 'y' ]]
+		      then
+			      delete_from_table
+		      elif [[ $return_to == 'N' || $return_to == 'n' ]]
+		      then
+			      table_menu
+		      else
+			      echo Invalid entry 
+			      sleep 1
+			      table_menu
+		      fi
+	      fi
+	else
+		echo Table not exist!
+		sleep 1
+		delete_from_table
+	fi
+}
+function select_all
+{
+        echo Enter table name
+        read TableName
+        EXT=.csv
+        Meta=meta
+        Table_Name=$TableName$EXT
+        Meta_Table=$TableName$Meta$EXT
+        cd $path 2>>/dev/null
+        if [ -f $Table_Name ]
+        then
+            typeset -i counter
+            counter=1
+            col=`tail -1 $Meta_Table`
+            while [[ $counter -le $col ]]
+            do
+               header[$counter]=`head -1 "$Meta_Table" | cut -d, -f$counter`
+               (( counter++ ))
+            done
+            echo ${header[@]} 
+            column -c 5 -t -s "," $Table_Name 
+	    echo -e "\n\n1-Table Menu\n2-Main Menu\n"
+	    echo please enter choose:
+	    read ans
+	    case $ans in
+	       1) table_menu
+		       ;;
+	       2) menu
+		       ;;
+	       *) echo Invalid Entry ; menu
+		       ;;
+	    esac
+
+       else
+          echo Table not exist!
+	  sleep 1
+	  select_all
+       fi
+}
+function select_record
+{
+        echo Enter table name
+        read TableName
+        EXT=.csv
+        Meta=meta
+        Table_Name=$TableName$EXT
+        Meta_Table=$TableName$Meta$EXT
+        cd $path 2>>/dev/null
+	if [ -f $Table_Name ]
+        then
+            echo please enter PK of the record you want to select
+            read rm_record
+            check=`awk -F, '{if($1=='$rm_record'){print $0}}' $Table_Name`
+            if [[ $check = "" ]]
+            then
+                echo Record not found
+            else
+                typeset -i counter
+                counter=1
+                col=`tail -1 $Meta_Table`
+                while [[ $counter -le $col ]]
+                do
+                 header[$counter]=`head -1 "$Meta_Table" | cut -d, -f$counter`
+                 (( counter++ ))
+                done
+                echo ${header[*]}
+
+                result=`awk -F, '{if($1=='$rm_record'){print NR}}' $Table_Name`
+                column -t -s "," $Table_Name | head -$result | tail -1
+           fi
+	  else
+              echo Table not exist!
+              sleep 1
+              select_from_table
+          fi
+}
+function select_from_table
+{
+	clear
+	echo -e "1-Select all table\n2-Select record from table\n3-Table Menu"
+	echo Please choose number:
+	read number
+	case $number in
+		1) select_all
+			;;
+		2) select_record
+			;;
+		3) table_menu
+			;;
+		*) echo Invaled entry
+		        sleep 1	
+		       	select_from_table
+			;;
+	esac
 }
 function table_menu
 {
@@ -283,13 +462,15 @@ function table_menu
 			;;
 		4) insert_to_table	
 			;;
-		5) echo select
+		5) select_from_table
 			;;
-		6) echo delete
+		6) delete_from_table
 			;;
 		7) menu
 			;;
-		*) echo Invalid number please enter number from 1 to 7 
+		*) echo Invalid number please enter number from 1 to 7
+		       sleep 1
+	               table_menu	       
 			;;
 	esac
 } 
