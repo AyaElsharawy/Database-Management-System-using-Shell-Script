@@ -9,7 +9,7 @@ function create
                 read name
 		if [[ $name = "" ]]
 		then 
-			echo Please enter name:
+			echo Please enter name
 		        sleep 1 
 		        create
 		
@@ -329,6 +329,7 @@ function delete_from_table
 	      if [[ $result = "" ]]
 	      then
 		      echo Record not found 
+			  delete_from_table
 	      else
 	              sed -i ''$result'd' $Table_Name
 		      echo Record removed successfully
